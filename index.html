@@ -132,7 +132,7 @@
 <body>
 <div class="wrap">
   <h1>Elites Project — Field Timeline</h1>
-  <p class="sub">August&ndash;October 2026 · drag a task to another day if it needs to be rescheduled · state saves automatically</p>
+  <p class="sub">August&ndash;October 2026 · drag a task to another day if it needs to be rescheduled · <span id="storageNotice">checking storage…</span></p>
 
   <div class="topbar">
     <div class="tabs">
@@ -273,24 +273,49 @@ function screeningSendDates(){
   return new Set(TASKS.filter(t=>t.tag==="Send Screening").map(effectiveDate));
 }
 
+const HAS_CLOUD_STORAGE = typeof window.storage !== 'undefined';
+
+async function storeGet(key){
+  if(HAS_CLOUD_STORAGE){
+    try{ return await window.storage.get(key, true); }catch(e){ return null; }
+  }
+  try{
+    const v = localStorage.getItem(key);
+    return v ? {value:v} : null;
+  }catch(e){ return null; }
+}
+async function storeSet(key, value){
+  if(HAS_CLOUD_STORAGE){
+    try{ await window.storage.set(key, value, true); }catch(e){}
+    return;
+  }
+  try{ localStorage.setItem(key, value); }catch(e){}
+}
+
 async function loadDone(){
   try{
-    const r = await window.storage.get('elites-tasks-done', true);
+    const r = await storeGet('elites-tasks-done');
     doneMap = r ? JSON.parse(r.value) : {};
   }catch(e){ doneMap = {}; }
   try{
-    const r2 = await window.storage.get('elites-tasks-dates', true);
+    const r2 = await storeGet('elites-tasks-dates');
     dateOverrides = r2 ? JSON.parse(r2.value) : {};
   }catch(e){ dateOverrides = {}; }
+  updateStorageNotice();
   render();
 }
 async function saveDone(){
-  try{ await window.storage.set('elites-tasks-done', JSON.stringify(doneMap), true); }
-  catch(e){}
+  await storeSet('elites-tasks-done', JSON.stringify(doneMap));
 }
 async function saveDates(){
-  try{ await window.storage.set('elites-tasks-dates', JSON.stringify(dateOverrides), true); }
-  catch(e){}
+  await storeSet('elites-tasks-dates', JSON.stringify(dateOverrides));
+}
+function updateStorageNotice(){
+  const el = document.getElementById('storageNotice');
+  if(!el) return;
+  el.textContent = HAS_CLOUD_STORAGE
+    ? 'saved and shared with anyone who opens this in Claude'
+    : 'saved only in this browser (open via Claude to share progress with your team)';
 }
 function toggle(id){
   doneMap[id] = !doneMap[id];
