@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Elites Project — Timeline</title>
+<style>
+  :root{
+    --paper:#F7F5F0;
+    --ink:#20262B;
+    --ink-soft:#5B615F;
+    --line:#DAD6CB;
+    --card:#FFFFFF;
+    --accent:#1B4B43;
+    --accent-soft:#E1EEE9;
+  }
+  *{box-sizing:border-box;}
+  :root{
+    --mono: "Cascadia Code", "Cascadia Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family: Calibri, "Segoe UI", Arial, sans-serif;
+    font-size:13.5px;
+    line-height:1.5;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 24px 60px;}
+  h1{
+    font-family: Calibri, "Segoe UI", Arial, sans-serif;
+    font-size:24px;
+    font-weight:700;
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--ink-soft);font-size:12px;margin:0 0 20px;}
+  .topbar{
+    display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+    justify-content:space-between;margin-bottom:18px;
+    padding-bottom:16px;border-bottom:1px solid var(--line);
+  }
+  .tabs{display:flex;gap:6px;}
+  .tab{
+    padding:8px 16px;border:1px solid var(--line);background:var(--card);
+    cursor:pointer;font-family:inherit;font-size:12.5px;color:var(--ink-soft);
+    border-radius:0;
+  }
+  .tab.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .progress{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink-soft);}
+  .bar{width:140px;height:6px;background:var(--line);position:relative;}
+  .bar > span{position:absolute;left:0;top:0;bottom:0;background:var(--accent);}
+  .filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;}
+  .chip{
+    padding:4px 10px;border:1px solid var(--line);background:var(--card);
+    cursor:pointer;font-size:11px;color:var(--ink-soft);user-select:none;
+    font-family:var(--mono);
+  }
+  .chip.on{color:var(--card);}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* Calendar */
+  .months{display:flex;flex-direction:column;gap:28px;}
+  .month h2{font-family:Calibri,"Segoe UI",Arial,sans-serif;font-size:15px;margin:0 0 8px;font-weight:700;}
+  .dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;}
+  .dow span{font-size:10px;text-align:center;color:var(--ink-soft);padding:2px 0;}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+  .cell{
+    min-height:96px;border:1px solid var(--line);background:var(--card);
+    padding:4px;font-size:10px;overflow:hidden;transition:background .1s;
+  }
+  .cell.empty{background:transparent;border:none;}
+  .cell.drop-hover{background:var(--accent-soft);border-color:var(--accent);border-style:dashed;}
+  .daynum{font-size:11px;color:var(--ink-soft);margin-bottom:3px;}
+  .daynum-n{font-size:17px;font-weight:700;color:#0C447C;line-height:1;}
+  .batch-label{
+    display:inline-block;margin-left:6px;font-size:11px;font-weight:700;
+    color:#0C447C;vertical-align:middle;font-family:var(--mono);
+  }
+  .cell.milestone{background:#EFEBDC;border-color:#CFC6A6;}
+  .milestone-n{color:#7A6A2E;}
+  .milestone-label{color:#7A6A2E;}
+  .cell.vacation{background:#EFEAF7;border-color:#C9BBDD;}
+  .day-block.vacation{background:#EFEAF7;padding:8px 10px;margin-left:-10px;margin-right:-10px;border-radius:3px;}
+  .cell.screening-send{background:#E6F1FB;border-color:#85B7EB;}
+  .cell.screening-send .daynum{margin-bottom:5px;}
+  .day-head.screening-send{color:#0C447C;}
+  .day-head.screening-send .datebig{font-size:18px;}
+  .tag-dot{
+    display:block;margin-bottom:2px;padding:1px 4px;font-size:9px;
+    cursor:grab;line-height:1.4;border-radius:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    font-family:var(--mono);
+  }
+  .tag-dot.done{opacity:0.4;text-decoration:line-through;}
+  .tag-dot.moved{outline:1px dashed currentColor;outline-offset:1px;}
+  .tag-dot.dragging{opacity:0.35;}
+
+  /* Timeline */
+  .day-block{margin-bottom:18px;border-radius:2px;transition:background .1s;}
+  .day-block.drop-hover{background:var(--accent-soft);}
+  .day-head{
+    font-family:Calibri,"Segoe UI",Arial,sans-serif;font-weight:700;font-size:13.5px;
+    padding-bottom:4px;border-bottom:1px solid var(--line);margin-bottom:8px;
+    display:flex;justify-content:space-between;align-items:baseline;
+  }
+  .day-head .wk{font-size:10px;color:var(--ink-soft);font-weight:400;font-family:inherit;}
+  .task{
+    display:flex;gap:10px;align-items:flex-start;
+    padding:6px 4px;border-bottom:1px dotted var(--line);cursor:grab;
+  }
+  .task:last-child{border-bottom:none;}
+  .task.dragging{opacity:0.35;}
+  .task input{margin-top:3px;flex-shrink:0;cursor:pointer;}
+  .task label{flex:1;cursor:pointer;}
+  .task.done label{opacity:0.45;text-decoration:line-through;}
+  .task.moved{background:var(--accent-soft);}
+  .moved-badge{
+    display:inline-block;margin-left:8px;font-size:9px;color:var(--accent);
+    font-style:italic;font-family:var(--mono);
+  }
+  .tagpill{
+    display:inline-block;padding:1px 6px;font-size:10px;margin-right:6px;
+    border-radius:2px;font-weight:700;font-family:var(--mono);
+  }
+  .milestone-row{
+    background:#EFEBDC;border:1px solid #CFC6A6;padding:6px 10px;
+    font-size:11px;margin-bottom:8px;color:#7A6A2E;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Elites Project — Field Timeline</h1>
+  <p class="sub">August&ndash;October 2026 · drag a task to another day if it needs to be rescheduled · state saves automatically</p>
+
+  <div class="topbar">
+    <div class="tabs">
+      <button class="tab active" data-view="calendar">Calendar</button>
+      <button class="tab" data-view="timeline">Timeline</button>
+    </div>
+    <div class="progress">
+      <span id="progressLabel">0/0 completed</span>
+      <div class="bar"><span id="progressBar" style="width:0%"></span></div>
+    </div>
+  </div>
+
+  <div class="filters" id="filters"></div>
+
+  <div class="view active" id="view-calendar">
+    <div class="months" id="months"></div>
+  </div>
+
+  <div class="view" id="view-timeline">
+    <div id="timeline"></div>
+  </div>
+</div>
+
+<script>
+const CATS = {
+  "Send Screening":  {c:"#0C447C", bg:"#E6F1FB"},
+  "Send Baseline":   {c:"#085041", bg:"#E1F5EE"},
+  "Send Endline":    {c:"#993556", bg:"#FBEAF0"},
+  "Send Fieldwork":  {c:"#993C1D", bg:"#FAECE7"},
+  "Excel Update":    {c:"#5F5E5A", bg:"#F1EFE8"},
+  "Security Course": {c:"#854F0B", bg:"#FAEEDA"},
+  "Baseline Reminder":{c:"#854F0B", bg:"#FAEEDA"},
+  "Endline Reminder": {c:"#854F0B", bg:"#FAEEDA"},
+  "Task Reminder":    {c:"#854F0B", bg:"#FAEEDA"},
+  "Payment Day":      {c:"#27500A", bg:"#EAF3DE"}
+};
+
+const TASKS = [
+{id:"t1",date:"2026-08-10",tag:"Send Screening",batch:"First Batch",text:"Send the screening survey (First Batch)."},
+{id:"t2b",date:"2026-08-17",tag:"Send Screening",batch:"Second Batch",text:"If needed: send the Second Batch of the screening survey."},
+{id:"t3",date:"2026-08-17",tag:"Excel Update",text:"Follow up responses twice a week in the Excel Book."},
+{id:"t5",date:"2026-08-17",tag:"Send Baseline",text:"Send the Baseline survey to First Batch respondents, before revealing treatment group."},
+{id:"t6",date:"2026-08-17",tag:"Security Course",text:"Notify them of the Uniandes Security and Risk Management course requirement."},
+{id:"t7",date:"2026-08-21",tag:"Send Fieldwork",text:"Send fieldwork packages by treatment group — treatment is revealed."},
+{id:"t8",date:"2026-08-21",tag:"Excel Update",text:"Update Excel Book with Baseline respondents."},
+{id:"t9b",date:"2026-08-24",tag:"Send Screening",batch:"Third Batch",text:"If needed: send the Third Batch of the screening survey."},
+{id:"t10",date:"2026-08-24",tag:"Send Baseline",text:"Send Baseline survey to remnant First Batch respondents plus Second Batch respondents."},
+{id:"t11",date:"2026-08-24",tag:"Security Course",text:"Notify them of the Uniandes Security and Risk Management course requirement."},
+{id:"t12",date:"2026-08-24",tag:"Excel Update",text:"Update Excel Book with Screening respondents."},
+{id:"t13",date:"2026-08-24",tag:"Send Endline",text:"Send the Endline survey to those who complete the experiment on the weekend of August 29th."},
+{id:"t14",date:"2026-08-26",tag:"Excel Update",text:"Update Endline, Baseline and Screening respondents in the Excel Book."},
+{id:"t15",date:"2026-08-26",tag:"Baseline Reminder",text:"Send a brief reminder to First Batch respondents who have not completed the Baseline survey."},
+{id:"t16",date:"2026-08-28",tag:"Send Fieldwork",text:"Send fieldwork packages to participants who filled the Baseline Survey after August 21st."},
+{id:"t17",date:"2026-08-28",tag:"Excel Update",text:"Update Excel Book with Baseline respondents."},
+{id:"t18",date:"2026-08-28",tag:"Endline Reminder",text:"Send a reminder to those who completed treatment but have not answered the Endline survey."},
+{id:"t19",date:"2026-08-31",tag:"Send Baseline",text:"Send Baseline survey to screening respondents from after August 24th."},
+{id:"t20",date:"2026-08-31",tag:"Security Course",text:"Notify them of the Uniandes Security and Risk Management course requirement."},
+{id:"t21",date:"2026-08-31",tag:"Excel Update",text:"Update Excel Book with Screening respondents."},
+{id:"t22",date:"2026-08-31",tag:"Send Endline",text:"Send the Endline survey to people who completed treatment after August 24th."},
+{id:"t23",date:"2026-09-02",tag:"Excel Update",text:"Update Endline, Baseline and Screening respondents in the Excel Book."},
+{id:"t24",date:"2026-09-02",tag:"Baseline Reminder",text:"Send a reminder to First or Second Batch respondents who have not completed the Baseline survey."},
+{id:"t25",date:"2026-09-04",tag:"Send Fieldwork",text:"Send fieldwork packages to participants who filled the Baseline Survey after August 28th."},
+{id:"t26",date:"2026-09-04",tag:"Excel Update",text:"Update Excel Book with Baseline respondents."},
+{id:"t27",date:"2026-09-04",tag:"Endline Reminder",text:"Send a reminder to those who completed treatment but have not answered the Endline survey."},
+{id:"t28",date:"2026-09-07",tag:"Send Baseline",text:"Send Baseline survey to screening respondents from after August 31st."},
+{id:"t29",date:"2026-09-07",tag:"Security Course",text:"Notify them of the Uniandes Security and Risk Management course requirement."},
+{id:"t30",date:"2026-09-07",tag:"Excel Update",text:"Update Excel Book with Screening respondents."},
+{id:"t31",date:"2026-09-07",tag:"Send Endline",text:"Send the Endline survey to people who completed treatment after August 31st."},
+{id:"t32",date:"2026-09-07",tag:"Payment Day",text:"First payment execution — ask the support team to process payments."},
+{id:"t33",date:"2026-09-09",tag:"Excel Update",text:"Update Endline, Baseline and Screening respondents in the Excel Book."},
+{id:"t34",date:"2026-09-09",tag:"Baseline Reminder",text:"Send a reminder to any Screening respondent, including Third Batch, without a completed Baseline survey."},
+{id:"t35",date:"2026-09-11",tag:"Send Fieldwork",text:"Send fieldwork packages to participants who filled the Baseline Survey after September 4th."},
+{id:"t36",date:"2026-09-11",tag:"Excel Update",text:"Update Excel Book with Baseline respondents."},
+{id:"t37",date:"2026-09-11",tag:"Endline Reminder",text:"Send a reminder to those who completed treatment but have not answered the Endline survey."},
+{id:"t38",date:"2026-09-14",tag:"Send Baseline",text:"Send Baseline survey to screening respondents from after September 7th."},
+{id:"t39",date:"2026-09-14",tag:"Security Course",text:"Notify them of the Uniandes Security and Risk Management course requirement."},
+{id:"t40",date:"2026-09-14",tag:"Excel Update",text:"Update Excel Book with Screening respondents."},
+{id:"t41",date:"2026-09-14",tag:"Send Endline",text:"Send the Endline survey to people who completed treatment after September 7th."},
+{id:"t42",date:"2026-09-16",tag:"Excel Update",text:"Update Endline and Baseline respondents in the Excel Book."},
+{id:"t43",date:"2026-09-16",tag:"Baseline Reminder",text:"Send a reminder to any Screening respondent without a completed Baseline survey."},
+{id:"t44",date:"2026-09-16",tag:"Task Reminder",text:"Email anyone with a field package but no completed visits: ask if they are still interested and request an estimated visit date."},
+{id:"t45",date:"2026-09-18",tag:"Send Fieldwork",text:"Send fieldwork packages to participants who filled the Baseline Survey after September 11th."},
+{id:"t46",date:"2026-09-18",tag:"Excel Update",text:"Update Excel Book with Baseline respondents."},
+{id:"t47",date:"2026-09-18",tag:"Endline Reminder",text:"Send a reminder to those who completed treatment but have not answered the Endline survey."},
+{id:"t48",date:"2026-09-21",tag:"Send Endline",text:"Send the Endline survey to people who completed treatment."},
+{id:"t49",date:"2026-09-21",tag:"Payment Day",text:"Payment for people who completed treatment from September 8th to 21st."},
+{id:"t50",date:"2026-09-23",tag:"Excel Update",text:"Update Endline and Baseline respondents in the Excel Book."},
+{id:"t51",date:"2026-09-23",tag:"Baseline Reminder",text:"Send a reminder to any Screening respondent without a completed Baseline survey."},
+{id:"t52",date:"2026-09-23",tag:"Task Reminder",text:"Email anyone with a field package but no completed visits, asking if they are still interested."},
+{id:"t53",date:"2026-09-25",tag:"Send Fieldwork",text:"Send fieldwork packages to participants who filled the Baseline Survey after September 18th."},
+{id:"t54",date:"2026-09-25",tag:"Excel Update",text:"Update Excel Book with Baseline respondents."},
+{id:"t55",date:"2026-09-25",tag:"Endline Reminder",text:"Send a reminder to those who completed treatment but have not answered the Endline survey."},
+{id:"t56",date:"2026-09-28",tag:"Send Endline",text:"For people who completed treatment after September 21st, send the Endline Survey."},
+{id:"t57",date:"2026-09-30",tag:"Excel Update",text:"Update Endline and Baseline respondents in the Excel Book."},
+{id:"t58",date:"2026-09-30",tag:"Baseline Reminder",text:"Send a reminder to any Screening respondent without a completed Baseline survey."},
+{id:"t59",date:"2026-09-30",tag:"Task Reminder",text:"Email anyone with a field package but no completed visits: ask if they are still interested and request an estimated visit date."},
+{id:"t60",date:"2026-10-02",tag:"Send Fieldwork",text:"Send fieldwork packages to participants who filled the Baseline Survey after September 25th."},
+{id:"t61",date:"2026-10-02",tag:"Excel Update",text:"Update Excel Book with Baseline respondents."},
+{id:"t62",date:"2026-10-02",tag:"Endline Reminder",text:"Send a reminder to those who completed treatment but have not answered the Endline survey."},
+{id:"t63",date:"2026-10-05",tag:"Send Endline",text:"For people who completed treatment after September 28th, send the Endline Survey."},
+{id:"t64",date:"2026-10-05",tag:"Payment Day",text:"Payment for people who completed treatment from September 21st to October 5th."},
+{id:"t65",date:"2026-10-07",tag:"Excel Update",text:"Update Endline and Baseline respondents in the Excel Book."},
+{id:"t66",date:"2026-10-07",tag:"Baseline Reminder",text:"Send a reminder to any Screening respondent without a completed Baseline survey."},
+{id:"t67",date:"2026-10-07",tag:"Task Reminder",text:"Email anyone with a field package but no completed visits: ask if they are still interested and request an estimated visit date."},
+{id:"t68",date:"2026-10-09",tag:"Send Fieldwork",text:"Send fieldwork packages to participants who filled the Baseline Survey after October 2nd."},
+{id:"t69",date:"2026-10-09",tag:"Excel Update",text:"Update Excel Book with Baseline respondents."},
+{id:"t70",date:"2026-10-09",tag:"Endline Reminder",text:"Send a reminder to those who completed treatment but have not answered the Endline survey."},
+{id:"t71",date:"2026-10-12",tag:"Send Endline",text:"For people who completed treatment after October 5th, send the Endline Survey."},
+{id:"t72",date:"2026-10-12",tag:"Payment Day",text:"Payment for people who completed treatment from October 5th to October 12th."},
+{id:"t73",date:"2026-10-14",tag:"Excel Update",text:"Update Endline and Baseline respondents in the Excel Book."},
+{id:"t74",date:"2026-10-14",tag:"Baseline Reminder",text:"Send a reminder to any Screening respondent without a completed Baseline survey."},
+{id:"t75",date:"2026-10-14",tag:"Task Reminder",text:"Email anyone with a field package but no completed visits: ask if they are still interested and request an estimated visit date."},
+{id:"t76",date:"2026-10-16",tag:"Send Fieldwork",text:"Send fieldwork packages to participants who filled the Baseline Survey after October 9th."},
+{id:"t77",date:"2026-10-16",tag:"Excel Update",text:"Update Excel Book with Baseline respondents."},
+{id:"t78",date:"2026-10-16",tag:"Endline Reminder",text:"Send a reminder to those who completed treatment but have not answered the Endline survey."}
+];
+
+const MILESTONES = {
+  "2026-09-14": "Screening Survey Closed"
+};
+const VACATION_DATES = new Set([
+  "2026-10-05","2026-10-06","2026-10-07","2026-10-08","2026-10-09"
+]);
+const WEEKDAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTH_NAMES = {8:"August 2026", 9:"September 2026", 10:"October 2026"};
+
+let doneMap = {};
+let dateOverrides = {};
+let activeFilters = new Set(Object.keys(CATS));
+
+function effectiveDate(t){ return dateOverrides[t.id] || t.date; }
+function batchLabelsByDate(){
+  const m = {};
+  TASKS.filter(t=>t.batch).forEach(t=>{ m[effectiveDate(t)] = t.batch; });
+  return m;
+}
+function screeningSendDates(){
+  return new Set(TASKS.filter(t=>t.tag==="Send Screening").map(effectiveDate));
+}
+
+async function loadDone(){
+  try{
+    const r = await window.storage.get('elites-tasks-done', true);
+    doneMap = r ? JSON.parse(r.value) : {};
+  }catch(e){ doneMap = {}; }
+  try{
+    const r2 = await window.storage.get('elites-tasks-dates', true);
+    dateOverrides = r2 ? JSON.parse(r2.value) : {};
+  }catch(e){ dateOverrides = {}; }
+  render();
+}
+async function saveDone(){
+  try{ await window.storage.set('elites-tasks-done', JSON.stringify(doneMap), true); }
+  catch(e){}
+}
+async function saveDates(){
+  try{ await window.storage.set('elites-tasks-dates', JSON.stringify(dateOverrides), true); }
+  catch(e){}
+}
+function toggle(id){
+  doneMap[id] = !doneMap[id];
+  saveDone();
+  render();
+}
+function moveTask(id, newDate){
+  const task = TASKS.find(t=>t.id===id);
+  if(!task || effectiveDate(task) === newDate) return;
+  if(task.date === newDate) delete dateOverrides[id];
+  else dateOverrides[id] = newDate;
+  saveDates();
+  render();
+}
+
+function buildFilters(){
+  const el = document.getElementById('filters');
+  el.innerHTML = '';
+  Object.keys(CATS).forEach(cat=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip on';
+    chip.style.background = CATS[cat].bg;
+    chip.style.color = CATS[cat].c;
+    chip.style.borderColor = CATS[cat].c;
+    chip.textContent = cat;
+    chip.onclick = ()=>{
+      if(activeFilters.has(cat)) activeFilters.delete(cat);
+      else activeFilters.add(cat);
+      chip.classList.toggle('on');
+      render();
+    };
+    el.appendChild(chip);
+  });
+}
+
+function buildMonth(month, year){
+  const BATCH_LABELS = batchLabelsByDate();
+  const SCREENING_SEND_DATES = screeningSendDates();
+  const first = new Date(year, month-1, 1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const wrap = document.createElement('div');
+  wrap.className = 'month';
+  wrap.innerHTML = '<h2>'+MONTH_NAMES[month]+'</h2>';
+  const dow = document.createElement('div');
+  dow.className = 'dow';
+  WEEKDAYS.forEach(d=>{ const s=document.createElement('span'); s.textContent=d; dow.appendChild(s); });
+  wrap.appendChild(dow);
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  for(let i=0;i<startDow;i++){
+    const c = document.createElement('div'); c.className='cell empty'; grid.appendChild(c);
+  }
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = year+'-'+String(month).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.date = dateStr;
+    if(MILESTONES[dateStr]) cell.classList.add('milestone');
+    if(VACATION_DATES.has(dateStr)) cell.classList.add('vacation');
+    if(SCREENING_SEND_DATES.has(dateStr)) cell.classList.add('screening-send');
+    cell.addEventListener('dragover', e=>{ e.preventDefault(); cell.classList.add('drop-hover'); });
+    cell.addEventListener('dragleave', ()=>{ cell.classList.remove('drop-hover'); });
+    cell.addEventListener('drop', e=>{
+      e.preventDefault();
+      cell.classList.remove('drop-hover');
+      const id = e.dataTransfer.getData('text/plain');
+      if(id) moveTask(id, dateStr);
+    });
+    const num = document.createElement('div');
+    num.className = 'daynum';
+    if(BATCH_LABELS[dateStr]){
+      num.innerHTML = '<span class="daynum-n">'+d+'</span><span class="batch-label">'+BATCH_LABELS[dateStr]+'</span>';
+    } else if(MILESTONES[dateStr]){
+      num.innerHTML = '<span class="daynum-n milestone-n">'+d+'</span><span class="batch-label milestone-label">'+MILESTONES[dateStr]+'</span>';
+    } else {
+      num.textContent = d;
+    }
+    cell.appendChild(num);
+    TASKS.filter(t=>effectiveDate(t)===dateStr && activeFilters.has(t.tag)).forEach(t=>{
+      const dot = document.createElement('div');
+      dot.className = 'tag-dot' + (doneMap[t.id] ? ' done' : '') + (dateOverrides[t.id] ? ' moved' : '');
+      dot.style.background = CATS[t.tag].bg;
+      dot.style.color = CATS[t.tag].c;
+      dot.textContent = t.tag;
+      dot.title = t.text + (dateOverrides[t.id] ? ' (moved from '+t.date+' — drag back or drop elsewhere)' : ' — drag to move');
+      dot.draggable = true;
+      dot.addEventListener('dragstart', e=>{
+        e.dataTransfer.setData('text/plain', t.id);
+        e.dataTransfer.effectAllowed = 'move';
+        dot.classList.add('dragging');
+      });
+      dot.addEventListener('dragend', ()=> dot.classList.remove('dragging'));
+      dot.onclick = ()=>toggle(t.id);
+      cell.appendChild(dot);
+    });
+    grid.appendChild(cell);
+  }
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function renderCalendar(){
+  const el = document.getElementById('months');
+  el.innerHTML = '';
+  el.appendChild(buildMonth(8,2026));
+  el.appendChild(buildMonth(9,2026));
+  el.appendChild(buildMonth(10,2026));
+}
+
+function renderTimeline(){
+  const BATCH_LABELS = batchLabelsByDate();
+  const SCREENING_SEND_DATES = screeningSendDates();
+  const el = document.getElementById('timeline');
+  el.innerHTML = '';
+  const dates = [...new Set(TASKS.map(effectiveDate))].sort();
+  dates.forEach(date=>{
+    const tasks = TASKS.filter(t=>effectiveDate(t)===date && activeFilters.has(t.tag));
+    if(tasks.length===0 && !MILESTONES[date]) return;
+    const block = document.createElement('div');
+    block.className = 'day-block' + (VACATION_DATES.has(date) ? ' vacation' : '');
+    block.dataset.date = date;
+    block.addEventListener('dragover', e=>{ e.preventDefault(); block.classList.add('drop-hover'); });
+    block.addEventListener('dragleave', ()=>{ block.classList.remove('drop-hover'); });
+    block.addEventListener('drop', e=>{
+      e.preventDefault();
+      block.classList.remove('drop-hover');
+      const id = e.dataTransfer.getData('text/plain');
+      if(id) moveTask(id, date);
+    });
+    const dt = new Date(date+'T00:00:00');
+    const label = dt.toLocaleDateString('en-US',{weekday:'long',day:'numeric',month:'long'});
+    const head = document.createElement('div');
+    head.className = 'day-head' + (SCREENING_SEND_DATES.has(date) ? ' screening-send' : '');
+    const batchTag = BATCH_LABELS[date] ? ' <span class="batch-label">'+BATCH_LABELS[date]+'</span>' : '';
+    const labelSpan = SCREENING_SEND_DATES.has(date)
+      ? '<span class="datebig">'+label.charAt(0).toUpperCase()+label.slice(1)+'</span>'+batchTag
+      : '<span>'+label.charAt(0).toUpperCase()+label.slice(1)+'</span>';
+    head.innerHTML = labelSpan;
+    block.appendChild(head);
+    if(MILESTONES[date]){
+      const m = document.createElement('div');
+      m.className = 'milestone-row';
+      m.textContent = MILESTONES[date];
+      block.appendChild(m);
+    }
+    tasks.forEach(t=>{
+      const row = document.createElement('div');
+      row.className = 'task' + (doneMap[t.id] ? ' done' : '') + (dateOverrides[t.id] ? ' moved' : '');
+      row.draggable = true;
+      row.addEventListener('dragstart', e=>{
+        e.dataTransfer.setData('text/plain', t.id);
+        e.dataTransfer.effectAllowed = 'move';
+        row.classList.add('dragging');
+      });
+      row.addEventListener('dragend', ()=> row.classList.remove('dragging'));
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!doneMap[t.id];
+      cb.onchange = ()=>toggle(t.id);
+      const lab = document.createElement('label');
+      const pill = document.createElement('span');
+      pill.className = 'tagpill';
+      pill.style.background = CATS[t.tag].bg;
+      pill.style.color = CATS[t.tag].c;
+      pill.textContent = t.tag;
+      lab.appendChild(pill);
+      lab.appendChild(document.createTextNode(t.text));
+      if(dateOverrides[t.id]){
+        const badge = document.createElement('span');
+        badge.className = 'moved-badge';
+        badge.textContent = 'moved from '+t.date;
+        lab.appendChild(badge);
+      }
+      lab.onclick = ()=>toggle(t.id);
+      row.appendChild(cb);
+      row.appendChild(lab);
+      block.appendChild(row);
+    });
+    el.appendChild(block);
+  });
+}
+
+function renderProgress(){
+  const total = TASKS.length;
+  const done = TASKS.filter(t=>doneMap[t.id]).length;
+  document.getElementById('progressLabel').textContent = done+'/'+total+' completed';
+  document.getElementById('progressBar').style.width = (total? (done/total*100):0)+'%';
+}
+
+function render(){
+  renderCalendar();
+  renderTimeline();
+  renderProgress();
+}
+
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('view-'+tab.dataset.view).classList.add('active');
+  };
+});
+
+buildFilters();
+loadDone();
+</script>
+</body>
+</html>
